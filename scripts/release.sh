@@ -3,6 +3,21 @@ set -e
 
 VERSION=$1
 
+# Check if tag already exists
+if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+    echo "Error: Tag v${VERSION} already exists!"
+    echo "Please remove the tag running 'git tag -d v${VERSION}' and try again."
+    exit 1
+fi
+
+# Check if branch already exists
+if git show-ref --verify --quiet "refs/heads/release/v${VERSION}" || \
+   git show-ref --verify --quiet "refs/remotes/origin/release/v${VERSION}"; then
+    echo "Error: Branch release/v${VERSION} already exists locally or remotely!"
+    echo "Please remove the branch running 'git branch -D release/v${VERSION}' and try again."
+    exit 1
+fi
+
 # Verify version format
 if ! echo "$VERSION" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" > /dev/null; then
     echo "Version must be in format X.Y.Z"
@@ -28,8 +43,12 @@ do_sed "CHANGELOG.md" "s/## Unreleased/## [${VERSION}] - ${CURRENT_DATE}/"
 # Update workspace version
 do_sed "Cargo.toml" "s/^version = \".*\"/version = \"${VERSION}\"/"
 
+# List of crates to be published to crates.io
+# These require explicit version dependencies for publishing
+CRATES=("common" "crypto" "serde" "class-hash")
+
 # Update versions in crate Cargo.toml files
-for crate in common crypto serde class-hash; do
+for crate in "${CRATES[@]}"; do
     file="crates/${crate}/Cargo.toml"
     echo "Updating dependencies for $file..."
     do_sed "$file" "s/pathfinder-common = { version = \"[^\"]*\"/pathfinder-common = { version = \"${VERSION}\"/"
@@ -38,7 +57,11 @@ for crate in common crypto serde class-hash; do
 done
 
 # Update Cargo.lock
-cargo update -p pathfinder-common -p pathfinder-crypto -p pathfinder-serde -p pathfinder-class-hash
+cargo_update_args=()
+for crate in "${CRATES[@]}"; do
+    cargo_update_args+=(-p "pathfinder-${crate}")
+done
+cargo update "${cargo_update_args[@]}"
 
 # Verify everything still builds
 cargo check --workspace
@@ -56,12 +79,12 @@ echo -e "\nChanges made:"
 echo "- Updated workspace version to ${VERSION}"
 echo "- Updated CHANGELOG.md with version ${VERSION} and date ${CURRENT_DATE}"
 echo "- Updated dependency versions in public crates:"
-for crate in common crypto serde class-hash; do
+for crate in "${CRATES[@]}"; do
     echo "  - crates/${crate}/Cargo.toml"
 done
 
 # Confirmation before pushing
-echo -e "\nPush these changes to release/v${VERSION} and create a tag v${VERSION}? (Y/n)"
+echo -e "\nPush these changes to \`release/v${VERSION}\` and create a tag \`v${VERSION}\`? (Y/n)"
 read -r answer
 if [[ "$answer" == "n" ]] || [[ "$answer" == "N" ]]; then
     echo "Aborting push. Changes are committed locally."
