@@ -28,8 +28,12 @@ serde_json = { workspace = true, features = [
 ] }
 serde_with = { workspace = true }
 sha3 = { workspace = true }
-tagged = { path = "../tagged", optional = true }
-tagged-debug-derive = { path = "../tagged-debug-derive", optional = true }
+
+# These crates aren't published as they're meant for internal use only.
+# The version is just to satisfy cargo publish requirements.
+tagged = { version = "0.0.1", path = "../tagged", optional = true }
+tagged-debug-derive = { version = "0.0.1", path = "../tagged-debug-derive", optional = true }
+
 thiserror = { workspace = true }
 
 [dev-dependencies]
