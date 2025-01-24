@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 anyhow = { workspace = true }
 fake = { workspace = true, features = ["serde_json"] }
 pathfinder-class-hash = { path = "../class-hash" }
-pathfinder-common = { path = "../common" }
+pathfinder-common = { path = "../common", features = ["debug"] }
 pathfinder-crypto = { path = "../crypto" }
 pathfinder-serde = { path = "../serde" }
 primitive-types = { workspace = true }
